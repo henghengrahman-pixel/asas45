@@ -1,0 +1,181 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <section class="admin-section glass">
+      <h2>AUTO Result dari Web</h2>
+      <p style="opacity:.8;margin-bottom:16px">AUTO dan MANUAL dapat dipakai bersamaan. Ganti domain sumber di sini tanpa edit source code atau deploy ulang.</p>
+
+      <% if (autoMessage) { %><div style="padding:12px;margin-bottom:14px;border:1px solid #2d8a52;border-radius:8px"><%= autoMessage %></div><% } %>
+      <% if (autoError) { %><div style="padding:12px;margin-bottom:14px;border:1px solid #b63c3c;border-radius:8px"><%= autoError %></div><% } %>
+
+      <form method="POST" action="/admin/results/auto-settings" class="admin-form grid-2">
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" name="enabled" <%= autoResultSettings.enabled ? 'checked' : '' %> style="width:auto" />
+          AUTO Result Aktif
+        </label>
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" name="autoDetectCodes" <%= autoResultSettings.autoDetectCodes !== false ? 'checked' : '' %> style="width:auto" />
+          Auto Detect Kode Pasaran
+        </label>
+        <label class="full">URL Sumber
+          <input name="sourceUrl" value="<%= autoResultSettings.sourceUrl || '' %>" placeholder="https://domain.com/history/number" required />
+        </label>
+        <label>Path Result
+          <input name="resultPathTemplate" value="<%= autoResultSettings.resultPathTemplate || '/history/result/{code}/kosong' %>" required />
+        </label>
+        <label>Interval Scan (detik, min 10)
+          <input type="number" min="10" max="3600" name="scanIntervalSeconds" value="<%= autoResultSettings.scanIntervalSeconds || 20 %>" required />
+        </label>
+        <label>Timeout Sumber (ms)
+          <input type="number" min="3000" max="60000" name="timeoutMs" value="<%= autoResultSettings.timeoutMs || 12000 %>" required />
+        </label>
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" name="sendFirstSeen" <%= autoResultSettings.sendFirstSeen ? 'checked' : '' %> style="width:auto" />
+          Ambil result pertama saat sistem baru aktif
+        </label>
+        <button class="action-btn" type="submit">Simpan Pengaturan AUTO</button>
+      </form>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <form method="POST" action="/admin/results/auto-detect"><button class="action-btn small" type="submit">Detect Kode Pasaran</button></form>
+        <form method="POST" action="/admin/results/auto-scan"><button class="action-btn small" type="submit">Scan Sekarang</button></form>
+        <form method="POST" action="/admin/results/auto-scan" onsubmit="return confirm('Force scan akan menyimpan result terbaru walau periode sama. Lanjutkan?')">
+          <input type="hidden" name="force" value="1" />
+          <button class="action-btn small" type="submit">Force Scan</button>
+        </form>
+      </div>
+
+      <div style="margin-top:18px;overflow:auto">
+        <table style="width:100%">
+          <thead><tr><th>Pasaran</th><th>Kode</th><th>AUTO</th><th>Periode Terakhir</th><th>Nomor</th></tr></thead>
+          <tbody>
+            <% markets.forEach(function(market){ const st = (autoResultState.markets || {})[market.slug] || {}; %>
+              <tr>
+                <td><%= market.name %></td>
+                <td><strong><%= market.sourceCode || '-' %></strong></td>
+                <td><%= market.autoResultEnabled !== false ? 'ON' : 'OFF' %></td>
+                <td><%= st.period || '-' %></td>
+                <td><%= st.prize1 || '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p style="opacity:.7;margin-top:12px">Last scan: <%= autoResultState.lastScanAt || '-' %> | Status: <%= autoResultState.lastScanOk === null ? '-' : (autoResultState.lastScanOk ? 'OK' : 'ADA ERROR') %></p>
+      <% if (autoResultState.lastResults && autoResultState.lastResults.length) { %>
+        <details style="margin-top:12px"><summary>Log scan terakhir</summary><pre style="white-space:pre-wrap;overflow:auto"><%= JSON.stringify(autoResultState.lastResults, null, 2) %></pre></details>
+      <% } %>
+    </section>
+
+
+    <section class="admin-section glass">
+      <h1>Result Pasaran</h1>
+
+      <div class="result-admin-list">
+        <% markets.forEach(function(market){ %>
+          <div class="result-admin-row glass">
+            <div class="result-admin-market">
+              <img
+                src="<%= market.logoUrl || 'https://dummyimage.com/80x40/111/fff&text=LOGO' %>"
+                alt="<%= market.name %>"
+                class="result-admin-logo"
+              />
+              <div class="result-admin-name"><%= market.name %></div>
+            </div>
+
+            <form method="POST" action="/admin/results" class="result-admin-form">
+              <input type="hidden" name="slug" value="<%= market.slug %>" />
+
+              <div class="result-admin-input">
+                <input
+                  type="text"
+                  name="prize1"
+                  maxlength="5"
+                  placeholder="XXXX"
+                  value="<%= market.currentResult && market.currentResult.prize1 ? market.currentResult.prize1 : '' %>"
+                  required
+                />
+              </div>
+
+              <div class="result-admin-date">
+                <input
+                  type="date"
+                  name="date"
+                  value="<%= market.currentResult && market.currentResult.date ? market.currentResult.date : today %>"
+                  required
+                />
+              </div>
+
+              <div class="result-admin-time">
+                <input
+                  type="text"
+                  name="resultTime"
+                  value="<%= market.currentResult && market.currentResult.resultTime ? market.currentResult.resultTime : (market.resultTime || '') %>"
+                  placeholder="03:00"
+                  required
+                />
+              </div>
+
+              <div class="result-admin-action">
+                <button class="action-btn" type="submit">Simpan Result</button>
+              </div>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+
+    <section class="admin-section glass">
+      <h2>History Result</h2>
+
+      <div class="admin-table result-history-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Pasaran</th>
+              <th>Hari</th>
+              <th>Tanggal</th>
+              <th>Prize 1</th>
+              <th>Jam</th>
+              <th>Mode</th>
+              <th>Periode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (allHistory && allHistory.length) { %>
+              <% allHistory.forEach(function(item){ %>
+                <tr>
+                  <td>
+                    <div class="history-market-cell">
+                      <img
+                        src="<%= item.marketLogoUrl || 'https://dummyimage.com/60x30/111/fff&text=LOGO' %>"
+                        alt="<%= item.marketName %>"
+                        class="history-market-logo"
+                      />
+                      <span><%= item.marketName %></span>
+                    </div>
+                  </td>
+                  <td><%= item.dayName %></td>
+                  <td><%= item.date %></td>
+                  <td><strong><%= item.prize1 %></strong></td>
+                  <td><%= item.resultTime %></td>
+                  <td><%= item.source === 'auto' ? 'AUTO' : 'MANUAL' %></td>
+                  <td><%= item.period || '-' %></td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="7">Belum ada history.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>
