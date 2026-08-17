@@ -1,9 +1,0 @@
-{
-  "enabled": false,
-  "sourceUrl": "https://omtogelsky.com/history/number",
-  "resultPathTemplate": "/history/result/{code}/kosong",
-  "scanIntervalSeconds": 20,
-  "timeoutMs": 12000,
-  "autoDetectCodes": true,
-  "sendFirstSeen": false
-}
